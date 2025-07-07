@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: pong-backend
+    ports:
+      - "3000:3000"
+    environment:
+      DB_PATH: /db/sqlite.db
+    volumes:
+      - db-data:/db
+    depends_on:
+      - database
+
+  frontend:
+    build: ./frontend
+    container_name: pong-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  database:
+    build: ./database
+    container_name : pong-db
+    volumes:
+      - db-data:/db
+    restart: always
+
+  volumes:
+    db-data:
