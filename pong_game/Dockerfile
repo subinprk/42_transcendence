@@ -39,5 +39,18 @@ RUN npm install -g fastify-cli
 # ============ Set working directory in Docker Container ============
 WORKDIR /app
 
+# ============ Copy package.json and package-lock.json (if available) ============
+COPY ./src/package*.json ./
+
+# ============ Install npm dependencies ============
+RUN npm install
+
 # ============ Copy source code ============
 COPY ./src .
+COPY ./models ./models
+
+# ============ Expose port ============
+EXPOSE 5000
+
+# ============ Start the server ============
+CMD ["npm", "start"]

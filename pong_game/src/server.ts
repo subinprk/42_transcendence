@@ -1,7 +1,9 @@
 // Entry file of the pong game server
 
 import Fastify from 'fastify';
-import gameRoutes from './routes/game';
+// import gameRoutes from './routes/game';
+import { GameState, Player, Ball } from '../models/types';
+import { updatePlayer updateStatus } from './utils/gameManager';
 
 const server = Fastify({logger: true});
 server.register(gameRoutes, {prefix: '/game'});
