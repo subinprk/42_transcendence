@@ -21,6 +21,14 @@ services:
     depends_on:
       - backend
 
+  pong:
+    image: ./pong_game
+    container_name: pong-game
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+
   database:
     build: ./database
     container_name : pong-db
