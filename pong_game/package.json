@@ -2,18 +2,20 @@
   "name": "pong-game-server",
   "version": "1.0.0",
   "description": "Pong game API server using Fastify",
-  "main": "server.js",
+  "main": "src/server.ts",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "npx tsx src/server.ts",
+    "dev": "npx tsx watch src/server.ts",
     "build": "tsc",
     "build:watch": "tsc --watch"
   },
   "dependencies": {
-    "fastify": "^5.4.0"
+    "fastify": "^5.4.0",
+    "@fastify/websocket": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
   }
 }

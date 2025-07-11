@@ -9,7 +9,36 @@ export function createGame(player1: string, player2: string): GameState{
 	const p1 = new Player(player1);
 	const p2 = new Player(player2);
 	
-	return new GameState(id, p1, p2);
+	const game = new GameState(id, p1, p2);
+	games.set(id, game);
+	
+	return game;
+}
+
+export function getGame(gameId: string): GameState | undefined {
+	return games.get(gameId);
+}
+
+export function startGame(gameId: string): boolean {
+	const game = games.get(gameId);
+	if (game && game.state === 'waiting') {
+		game.start();
+		return true;
+	}
+	return false;
+}
+
+export function movePaddle(gameId: string, player: 'player1' | 'player2', direction: 'up' | 'down'): boolean {
+	const game = games.get(gameId);
+	if (!game) return false;
+	
+	if (player === 'player1') {
+		game.player1.move(direction);
+	} else {
+		game.player2.move(direction);
+	}
+	
+	return true;
 }
 
 export function updateStatus(game: GameState) {

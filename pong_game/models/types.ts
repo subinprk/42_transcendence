@@ -18,3 +18,9 @@ export type GameState = {
 	ball: Ball;
 	state : 'waiting' | 'playing' | 'finished';
 };
+
+export type MoveRequest = {
+	gameId: string;
+	player: 'player1' | 'player2';
+	direction: 'up' | 'down';
+};

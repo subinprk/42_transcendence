@@ -11,10 +11,9 @@ RUN apt-get update && apt-get install -y \
 	git \
 	libssl-dev \
 	pkg-config \
-	libzlib-dev \
+	zlib1g-dev \
 	zip \
 	unzip \
-	npm \
 	&& rm -rf /var/lib/apt/lists/*
 
 # ============Install Node.js ============
@@ -39,17 +38,16 @@ RUN npm install -g fastify-cli
 # ============ Set working directory in Docker Container ============
 WORKDIR /app
 
-# ============ Copy package.json and package-lock.json (if available) ============
-COPY ./src/package*.json ./
-
-# ============ Install npm dependencies ============
+# ============ Copy package.json and install dependencies ============
+COPY ./package.json ./package.json
 RUN npm install
 
 # ============ Copy source code ============
-COPY ./src .
+COPY ./src ./src
 COPY ./models ./models
+COPY ./package.json ./package.json
 
-# ============ Expose port ============
+# ============ Expose the port the app runs on ============
 EXPOSE 5000
 
 # ============ Start the server ============
