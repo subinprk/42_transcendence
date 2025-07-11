@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createGame, updateStatus, getGame, startGame, movePaddle } from './gameManager';
+import { createGame, updateStatus, getGame, startGame, movePaddle } from '../utils/gameManager';
 
 interface CreateGameRequest {
   player1: string;

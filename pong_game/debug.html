@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game Test Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .game-canvas {
+            border: 2px solid #333;
+            background-color: #000;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .log {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏓 Pong Game Test Frontend</h1>
+    
+    <div class="container">
+        <!-- Game Controls Panel -->
+        <div class="panel">
+            <h3>Game Controls</h3>
+            
+            <div>
+                <h4>1. Create Game</h4>
+                <input type="text" id="player1" placeholder="Player 1 Name" value="Alice">
+                <input type="text" id="player2" placeholder="Player 2 Name" value="Bob">
+                <button onclick="createGame()">Create Game</button>
+            </div>
+            
+            <div>
+                <h4>2. Game Actions</h4>
+                <input type="text" id="gameId" placeholder="Game ID" readonly>
+                <br>
+                <button onclick="startGame()" id="startBtn" disabled>Start Game</button>
+                <button onclick="connectWebSocket()" id="connectBtn" disabled>Connect WebSocket</button>
+                <button onclick="stopGame()" id="stopBtn" disabled>Stop Game</button>
+            </div>
+            
+            <div>
+                <h4>3. Movement Controls</h4>
+                <div class="controls">
+                    <div>
+                        <p>Player 1:</p>
+                        <button onclick="movePlayer('player1', 'up')">↑</button>
+                        <button onclick="movePlayer('player1', 'down')">↓</button>
+                    </div>
+                    <div>
+                        <p>Player 2:</p>
+                        <button onclick="movePlayer('player2', 'up')">↑</button>
+                        <button onclick="movePlayer('player2', 'down')">↓</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4>4. Manual Update</h4>
+                <button onclick="updateGame()">Update Game State</button>
+                <button onclick="getGameState()">Get Game State</button>
+            </div>
+        </div>
+        
+        <!-- Game Display Panel -->
+        <div class="panel">
+            <h3>Game Display</h3>
+            <canvas id="gameCanvas" class="game-canvas" width="400" height="300"></canvas>
+            
+            <div id="gameInfo" class="info">
+                <p><strong>Game Status:</strong> <span id="gameStatus">No game created</span></p>
+                <p><strong>Player 1:</strong> <span id="player1Info">-</span> (Score: <span id="score1">0</span>)</p>
+                <p><strong>Player 2:</strong> <span id="player2Info">-</span> (Score: <span id="score2">0</span>)</p>
+                <p><strong>WebSocket:</strong> <span id="wsStatus">Disconnected</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Status Messages -->
+    <div id="statusMessages"></div>
+    
+    <!-- API Log -->
+    <div class="panel">
+        <h3>API Log</h3>
+        <div id="apiLog" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:5000';
+        const WS_BASE = 'ws://localhost:5000';
+        
+        // Global variables
+        let currentGameId = null;
+        let websocket = null;
+        let gameState = null;
+        
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Utility functions
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('apiLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            console.log(message);
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessages');
+            const statusElement = document.createElement('div');
+            statusElement.className = `status ${type}`;
+            statusElement.textContent = message;
+            statusDiv.appendChild(statusElement);
+            
+            setTimeout(() => {
+                statusDiv.removeChild(statusElement);
+            }, 5000);
+        }
+        
+        function clearLog() {
+            document.getElementById('apiLog').textContent = '';
+        }
+        
+        // API functions
+        async function createGame() {
+            const player1 = document.getElementById('player1').value;
+            const player2 = document.getElementById('player2').value;
+            
+            if (!player1 || !player2) {
+                showStatus('Please enter both player names', 'error');
+                return;
+            }
+            
+            try {
+                log(`Creating game: ${player1} vs ${player2}`);
+                const response = await fetch(`${API_BASE}/game/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player1: player1,
+                        player2: player2
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentGameId = data.gameId;
+                    document.getElementById('gameId').value = currentGameId;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('connectBtn').disabled = false;
+                    
+                    showStatus(`Game created successfully! ID: ${currentGameId}`, 'success');
+                    log(`Game created: ${JSON.stringify(data)}`);
+                    
+                    // Update display
+                    document.getElementById('player1Info').textContent = player1;
+                    document.getElementById('player2Info').textContent = player2;
+                    document.getElementById('gameStatus').textContent = 'Created (waiting to start)';
+                } else {
+                    throw new Error(data.error || 'Failed to create game');
+                }
+            } catch (error) {
+                log(`Error creating game: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function startGame() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                log(`Starting game: ${currentGameId}`);
+                const response = await fetch(`${API_BASE}/game/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        gameId: currentGameId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus('Game started successfully!', 'success');
+                    log(`Game started: ${JSON.stringify(data)}`);
+                    document.getElementById('gameStatus').textContent = 'Playing';
+                    document.getElementById('stopBtn').disabled = false;
+                } else {
+                    throw new Error(data.error || 'Failed to start game');
+                }
+            } catch (error) {
+                log(`Error starting game: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function getGameState() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                log(`Getting game state: ${currentGameId}`);
+                const response = await fetch(`${API_BASE}/game/state/${currentGameId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    gameState = data;
+                    log(`Game state: ${JSON.stringify(data, null, 2)}`);
+                    updateDisplay();
+                } else {
+                    throw new Error(data.error || 'Failed to get game state');
+                }
+            } catch (error) {
+                log(`Error getting game state: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function movePlayer(player, direction) {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                log(`Moving ${player} ${direction}`);
+                const response = await fetch(`${API_BASE}/game/move`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        gameId: currentGameId,
+                        player: player,
+                        direction: direction
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`Move successful: ${JSON.stringify(data)}`);
+                    // Auto-update display
+                    setTimeout(getGameState, 100);
+                } else {
+                    throw new Error(data.error || 'Failed to move player');
+                }
+            } catch (error) {
+                log(`Error moving player: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function updateGame() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                log(`Updating game: ${currentGameId}`);
+                const response = await fetch(`${API_BASE}/game/update`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        gameId: currentGameId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`Game updated: ${JSON.stringify(data)}`);
+                    // Auto-refresh display
+                    setTimeout(getGameState, 100);
+                } else {
+                    throw new Error(data.error || 'Failed to update game');
+                }
+            } catch (error) {
+                log(`Error updating game: ${error.message}`, 'error');
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // WebSocket functions
+        function connectWebSocket() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                log(`Connecting to WebSocket: ${WS_BASE}/ws/${currentGameId}`);
+                websocket = new WebSocket(`${WS_BASE}/ws/${currentGameId}`);
+                
+                websocket.onopen = function(event) {
+                    log('WebSocket connected');
+                    document.getElementById('wsStatus').textContent = 'Connected';
+                    showStatus('WebSocket connected', 'success');
+                };
+                
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    log(`WebSocket message: ${JSON.stringify(data)}`);
+                    
+                    if (data.type === 'game_state') {
+                        gameState = data;
+                        updateDisplay();
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    log('WebSocket disconnected');
+                    document.getElementById('wsStatus').textContent = 'Disconnected';
+                    showStatus('WebSocket disconnected', 'error');
+                };
+                
+                websocket.onerror = function(error) {
+                    log(`WebSocket error: ${error}`, 'error');
+                    showStatus('WebSocket error', 'error');
+                };
+                
+            } catch (error) {
+                log(`Error connecting WebSocket: ${error.message}`, 'error');
+                showStatus(`WebSocket error: ${error.message}`, 'error');
+            }
+        }
+        
+        function stopGame() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('gameStatus').textContent = 'Stopped';
+            log('Game stopped');
+        }
+        
+        // Display functions
+        function updateDisplay() {
+            if (!gameState) return;
+            
+            // Update game info
+            document.getElementById('gameStatus').textContent = gameState.state || 'Unknown';
+            document.getElementById('score1').textContent = gameState.player1?.score || 0;
+            document.getElementById('score2').textContent = gameState.player2?.score || 0;
+            
+            // Draw game on canvas
+            drawGame();
+        }
+        
+        function drawGame() {
+            if (!gameState) return;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw center line
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw paddles
+            ctx.fillStyle = '#fff';
+            
+            // Player 1 paddle (left)
+            const paddle1Y = (gameState.player1?.paddle || 50) / 100 * (canvas.height - 60);
+            ctx.fillRect(10, paddle1Y, 10, 60);
+            
+            // Player 2 paddle (right)
+            const paddle2Y = (gameState.player2?.paddle || 50) / 100 * (canvas.height - 60);
+            ctx.fillRect(canvas.width - 20, paddle2Y, 10, 60);
+            
+            // Draw ball
+            if (gameState.ball) {
+                const ballX = (gameState.ball.x || 50) / 100 * canvas.width;
+                const ballY = (gameState.ball.y || 50) / 100 * canvas.height;
+                
+                ctx.beginPath();
+                ctx.arc(ballX, ballY, 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw scores
+            ctx.font = '24px Arial';
+            ctx.fillText(gameState.player1?.score || 0, canvas.width / 4, 30);
+            ctx.fillText(gameState.player2?.score || 0, (canvas.width * 3) / 4, 30);
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', function(event) {
+            if (!currentGameId) return;
+            
+            switch(event.key) {
+                case 'w':
+                case 'W':
+                    movePlayer('player1', 'up');
+                    break;
+                case 's':
+                case 'S':
+                    movePlayer('player1', 'down');
+                    break;
+                case 'ArrowUp':
+                    movePlayer('player2', 'up');
+                    event.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    movePlayer('player2', 'down');
+                    event.preventDefault();
+                    break;
+            }
+        });
+        
+        // Initialize
+        log('Frontend loaded. Server should be running on http://localhost:5000');
+        drawGame(); // Draw empty game
+    </script>
+</body>
+</html>
