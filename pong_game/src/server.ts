@@ -2,7 +2,7 @@
 
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
-import fastifyCors from '@fastify/cors';
+// import fastifyCors from '@fastify/cors';
 //cors is for debugging in html file
 import { GameState, Player, Ball } from '../models/class';
 import { createGame, updateStatus, getGame } from './utils/gameManager';
@@ -17,11 +17,11 @@ const gameConnections = new Map<string, Set<any>>();
 server.register(fastifyWebsocket);
 
 // for debugging purposes, CORS is enabled to allow requests from localhost:3000
-server.register(fastifyCors, {
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'file://', 'null'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-});
+// server.register(fastifyCors, {
+//   origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'file://', 'null'],
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// });
 
 server.register(gameRoutes, {prefix: '/game'});
 //prefix: '/game' allows all game-related routes to be grouped under /game

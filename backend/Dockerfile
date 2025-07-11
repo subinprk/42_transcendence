@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y \
 	git \
 	libssl-dev \
 	pkg-config \
-	libzlib-dev \
+	libz-dev \
+	libsqlite3-dev \
 	zip \
 	unzip \
 	npm \
@@ -40,4 +41,19 @@ RUN npm install -g fastify-cli
 WORKDIR /app
 
 # ============ Copy source code ============
-COPY ./src .
+COPY ./src ./src
+COPY ./server.ts .
+COPY ./package.json .
+COPY ./server.ts .
+COPY ./db ./db
+
+RUN npm install
+
+# =========== Expose the port ==============
+EXPOSE 3000
+
+# ========== Set SQLite DB file inside container =============
+RUN npm install better-sqlite3
+
+# ========== Start the server =============
+CMD ["npm", "start"]
