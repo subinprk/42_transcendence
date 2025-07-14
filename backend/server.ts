@@ -26,12 +26,16 @@ server.addHook('onRequest', async (request, reply) => {
   }
 });
 
-// Register existing backend routes
-// server.register(userRoutes, { prefix: '/api/users' });
-// server.register(authRoutes, { prefix: '/api/auth' });
+// Register player routes
+server.register(playerRoutes, { prefix: '/api/players' });
+
+// Register tournament routes
+server.register(tournamentJoinRoutes, { prefix: '/api/tournament' });
 
 // Register game routes
-server.register(registerGameRoutes, { prefix: '/game' });
+server.register(async function (fastify, opts) {
+  await registerGameRoutes(fastify, gameConnections);
+}, { prefix: '/game' });
 
 // Health check endpoint
 server.get('/health', async (request, reply) => {
