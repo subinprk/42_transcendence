@@ -11,7 +11,7 @@ import gameRoutes from './routes/game';
 const server = Fastify({logger: true});
 
 // Store WebSocket connections by game ID
-const gameConnections = new Map<string, Set<any>>();
+const pongConnections = new Map<string, Set<any>>();
 
 // Register WebSocket support
 server.register(fastifyWebsocket);
@@ -38,11 +38,11 @@ server.register(async function (fastify) {
     const gameId = req.params.gameId;
     
     // Add connection to game room
-    if (!gameConnections.has(gameId)) {
-      gameConnections.set(gameId, new Set());
+    if (!pongConnections.has(gameId)) {
+      pongConnections.set(gameId, new Set());
     }
-    gameConnections.get(gameId)!.add(connection);
-    
+    pongConnections.get(gameId)!.add(connection);
+
     console.log(`Player connected to game ${gameId}`);
     
     // Handle incoming messages from client
@@ -73,11 +73,11 @@ server.register(async function (fastify) {
     
     // Remove connection when client disconnects
     connection.on('close', () => {
-      const connections = gameConnections.get(gameId);
+      const connections = pongConnections.get(gameId);
       if (connections) {
         connections.delete(connection);
         if (connections.size === 0) {
-          gameConnections.delete(gameId);
+          pongConnections.delete(gameId);
         }
       }
       console.log(`Player disconnected from game ${gameId}`);
@@ -87,7 +87,7 @@ server.register(async function (fastify) {
 
 // Function to broadcast game state to all connected clients
 function broadcastGameState(gameId: string, game: GameState) {
-  const connections = gameConnections.get(gameId);
+  const connections = pongConnections.get(gameId);
   if (connections) {
     const gameState = {
       type: 'game_state',
@@ -122,7 +122,7 @@ function broadcastGameState(gameId: string, game: GameState) {
 
 // Game loop - broadcasts game state every 16ms (~60 FPS)
 setInterval(() => {
-  gameConnections.forEach((connections, gameId) => {
+  pongConnections.forEach((connections, gameId) => {
     if (connections.size > 0) {
       const game = getGame(gameId);
       if (game && game.state === 'playing') {

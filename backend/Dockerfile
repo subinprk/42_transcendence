@@ -42,10 +42,9 @@ WORKDIR /app
 
 # ============ Copy source code ============
 COPY ./src ./src
-COPY ./server.ts .
+COPY ./server.ts ./server.ts
 COPY ./package.json .
-COPY ./server.ts .
-COPY ./db ./db
+COPY ./game ./game
 
 RUN npm install
 

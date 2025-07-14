@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import { registerGameRoutes } from './game';
+
 // Import your existing backend routes
 // import userRoutes from './src/routes/users';
 // import authRoutes from './src/routes/auth';
@@ -30,7 +31,7 @@ server.addHook('onRequest', async (request, reply) => {
 // server.register(authRoutes, { prefix: '/api/auth' });
 
 // Register game routes
-server.register(registerGameRoutes.bind(null, gameConnections), { prefix: '/game' });
+server.register(registerGameRoutes, { prefix: '/game' });
 
 // Health check endpoint
 server.get('/health', async (request, reply) => {
@@ -40,6 +41,7 @@ server.get('/health', async (request, reply) => {
     services: ['pong-game', 'users', 'auth']
   };
 });
+
 
 // Game loop for real-time updates
 setInterval(() => {
@@ -70,5 +72,9 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+server.ready(() => {
+  console.log(server.printRoutes());
+});
 
 start();
