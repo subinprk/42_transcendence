@@ -99,11 +99,11 @@ export class GameState {
 		if (this.ball.x >= 100) {
 			this.player1.incrementScore();
 			this.ball.reset();
-			this.state = 'player1_wins';
+			this.state = 'waiting'; // Reset to waiting state after a score
 		} else if (this.ball.x <= 0) {
 			this.player2.incrementScore();
 			this.ball.reset();
-			this.state = 'player2_wins';
+			this.state = 'waiting'; // Reset to waiting state after a score
 		}
 	}
 }

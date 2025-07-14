@@ -15,26 +15,23 @@ export interface Player {
 
 export class PlayerService {
 
-	static createPlayer(player: Omit<Player, 'id'>){
-		const createPlayer(player: Omit<Player, 'id'>): Player{
-			const stmt = db.prepare(`
-				INSERT INTO players (username, email, display_name, avatar_url, wins, losses, rank_points)
-				VALUES (?, ?, ?, ?, ?, ?, ?)`
-			);
+	static createPlayer(player: Omit<Player, 'id'>): Player {
+		const stmt = db.prepare(`
+			INSERT INTO players (username, email, display_name, avatar_url, wins, losses, rank_points)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`
+		);
 
-			const result = stmt.run(
-				player.username,
-				player.email,
-				player.display_name,
-				player.avatar_url || null,
-				player.wins || 0,
-				player.losses || 0,
-				player.rank_points || 1000
-			)
+		const result = stmt.run(
+			player.username,
+			player.email,
+			player.display_name,
+			player.avatar_url || null,
+			player.wins || 0,
+			player.losses || 0,
+			player.rank_points || 1000
+		);
 
-			return this.getPlayerById(result.lastInsertRowid as number)!;
-		}
-
+		return this.getPlayerById(result.lastInsertRowid as number)!;
 	}
 
 	static getPlayerById(id: number): Player | null {
@@ -57,7 +54,7 @@ export class PlayerService {
 		return stmt.all() as Player[];
 	}
 
-	statoc updatePlayerStats(playerId: number, wins: number, losses: number, rankPoints: number): boolean {
+	static updatePlayerStats(playerId: number, wins: number, losses: number, rankPoints: number): boolean {
 		const stmt = db.prepare(`
 			UPDATE players
 			SET wins = wins + ?, losses = losses + ?, rank_points = ?, updated_at = CURRENT_TIMESTAMP

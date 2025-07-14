@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcendence Backend - Debug Test</title>
+    <style>
+        /* Same CSS as before - keeping it short for space */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 2.5em; }
+        .panel { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #e1e8ed; }
+        .panel h2 { color: #34495e; margin-bottom: 20px; font-size: 1.4em; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50; }
+        input { width: 100%; padding: 12px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 14px; }
+        button { background: linear-gradient(45deg, #3498db, #2980b9); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin: 5px; transition: all 0.3s ease; font-size: 14px; }
+        button:hover { background: linear-gradient(45deg, #2980b9, #1f4788); }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .btn-success { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .btn-danger { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        .btn-warning { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .status { padding: 15px; margin: 15px 0; border-radius: 8px; font-weight: 600; border-left: 5px solid; }
+        .status.success { background: #d4edda; color: #155724; border-left-color: #28a745; }
+        .status.error { background: #f8d7da; color: #721c24; border-left-color: #dc3545; }
+        .status.info { background: #d1ecf1; color: #0c5460; border-left-color: #17a2b8; }
+        .game-canvas { border: 3px solid #2c3e50; background: #000; border-radius: 10px; display: block; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .game-controls { display: flex; justify-content: center; gap: 20px; margin: 20px 0; flex-wrap: wrap; }
+        .game-info { background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #dee2e6; }
+        .debug-info { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .controls { display: flex; justify-content: center; gap: 30px; margin: 20px 0; }
+        .player-controls { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 10px; border: 1px solid #dee2e6; }
+        .websocket-status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        .websocket-connected { background: #28a745; color: white; }
+        .websocket-disconnected { background: #dc3545; color: white; }
+        .stats-row { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat-item { text-align: center; padding: 15px; background: #3498db; color: white; border-radius: 10px; min-width: 120px; }
+        .stat-value { font-size: 2em; font-weight: bold; }
+        .stat-label { font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Transcendence Pong Debug</h1>
+        
+        <!-- Server Status -->
+        <div class="panel">
+            <h2>🏥 Server Status</h2>
+            <button onclick="checkServerHealth()">Check Server Health</button>
+            <div id="serverStatus"></div>
+        </div>
+        
+        <!-- Quick Game Setup -->
+        <div class="panel">
+            <h2>🚀 Quick Game Setup</h2>
+            <div class="form-group">
+                <label>Player 1 Name:</label>
+                <input type="text" id="player1" value="Alice" placeholder="Enter player 1 name">
+            </div>
+            <div class="form-group">
+                <label>Player 2 Name:</label>
+                <input type="text" id="player2" value="Bob" placeholder="Enter player 2 name">
+            </div>
+            <div class="form-group">
+                <label>Game ID:</label>
+                <input type="text" id="gameId" readonly placeholder="Game ID will appear here">
+            </div>
+            
+            <div class="game-controls">
+                <button onclick="createGame()" class="btn-success">1. Create Game</button>
+                <button onclick="startGame()" id="startBtn" disabled class="btn-success">2. Start Game</button>
+                <button onclick="connectWebSocket()" id="connectBtn" disabled class="btn-warning">3. Connect WebSocket</button>
+                <button onclick="disconnectWebSocket()" id="disconnectBtn" disabled class="btn-danger">Disconnect</button>
+            </div>
+            
+            <div class="game-controls">
+                <button onclick="listGames()">List All Games</button>
+                <button onclick="getGameState()" id="getStateBtn" disabled>Get Game State</button>
+            </div>
+            
+            <div id="gameStatus"></div>
+        </div>
+
+        <!-- Game Display -->
+        <div class="panel">
+            <h2>🏓 Game Display</h2>
+            
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-value" id="player1Score">0</div>
+                    <div class="stat-label" id="player1Name">Player 1</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="currentGameStatus">No Game</div>
+                    <div class="stat-label">Status</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="player2Score">0</div>
+                    <div class="stat-label" id="player2Name">Player 2</div>
+                </div>
+            </div>
+            
+            <canvas id="gameCanvas" class="game-canvas" width="800" height="400"></canvas>
+            
+            <div class="controls">
+                <div class="player-controls">
+                    <h4>Player 1 (W/S)</h4>
+                    <button onclick="movePlayer('player1', 'up')">↑ W</button>
+                    <button onclick="movePlayer('player1', 'down')">↓ S</button>
+                </div>
+                <div class="player-controls">
+                    <h4>Player 2 (Arrows)</h4>
+                    <button onclick="movePlayer('player2', 'up')">↑</button>
+                    <button onclick="movePlayer('player2', 'down')">↓</button>
+                </div>
+            </div>
+            
+            <div class="game-info">
+                <p><strong>WebSocket Status:</strong> <span id="wsStatus" class="websocket-status websocket-disconnected">Disconnected</span></p>
+                <p><strong>Last Update:</strong> <span id="lastUpdate">Never</span></p>
+                <p><strong>Updates Received:</strong> <span id="updateCount">0</span></p>
+            </div>
+        </div>
+
+        <!-- Debug Info -->
+        <div class="panel">
+            <h2>🔍 Debug Information</h2>
+            <button onclick="toggleDebug()" id="debugToggle">Show Debug</button>
+            <button onclick="clearDebug()">Clear Debug</button>
+            <div id="debugInfo" class="debug-info" style="display: none;"></div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessages"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:3000';
+        const WS_BASE = 'ws://localhost:3000';
+        
+        // Global variables
+        let currentGameId = null;
+        let websocket = null;
+        let gameState = null;
+        let isConnected = false;
+        let updateCount = 0;
+        let debugVisible = false;
+        
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Debug functions
+        function debug(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function toggleDebug() {
+            debugVisible = !debugVisible;
+            const debugDiv = document.getElementById('debugInfo');
+            const toggleBtn = document.getElementById('debugToggle');
+            
+            if (debugVisible) {
+                debugDiv.style.display = 'block';
+                toggleBtn.textContent = 'Hide Debug';
+            } else {
+                debugDiv.style.display = 'none';
+                toggleBtn.textContent = 'Show Debug';
+            }
+        }
+        
+        function clearDebug() {
+            document.getElementById('debugInfo').innerHTML = '';
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessages');
+            const statusElement = document.createElement('div');
+            statusElement.className = `status ${type}`;
+            statusElement.textContent = message;
+            statusDiv.appendChild(statusElement);
+            
+            setTimeout(() => {
+                if (statusDiv.contains(statusElement)) {
+                    statusDiv.removeChild(statusElement);
+                }
+            }, 5000);
+            
+            debug(`STATUS [${type}]: ${message}`);
+        }
+        
+        // Server health check
+        async function checkServerHealth() {
+            try {
+                debug('Checking server health...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('serverStatus').innerHTML = 
+                        `<div class="status success">✅ Server is healthy: ${data.message}</div>`;
+                    debug(`Health check success: ${JSON.stringify(data)}`);
+                    showStatus('Server is healthy!', 'success');
+                } else {
+                    throw new Error('Server health check failed');
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = 
+                    `<div class="status error">❌ Server is down: ${error.message}</div>`;
+                debug(`Health check failed: ${error.message}`);
+                showStatus('Server is down!', 'error');
+            }
+        }
+        
+        // Game functions - FIXED ENDPOINTS
+        async function createGame() {
+            const player1 = document.getElementById('player1').value;
+            const player2 = document.getElementById('player2').value;
+            
+            if (!player1 || !player2) {
+                showStatus('Please enter both player names', 'error');
+                return;
+            }
+            
+            try {
+                debug(`Creating game: ${player1} vs ${player2}`);
+                debug(`Making request to: ${API_BASE}/game/pong/create`);
+                
+                const response = await fetch(`${API_BASE}/game/pong/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ player1, player2 })
+                });
+                
+                const data = await response.json();
+                debug(`Create game response: ${JSON.stringify(data)}`);
+                
+                if (response.ok) {
+                    currentGameId = data.gameId;
+                    document.getElementById('gameId').value = currentGameId;
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('getStateBtn').disabled = false;
+                    
+                    // Update display
+                    document.getElementById('player1Name').textContent = player1;
+                    document.getElementById('player2Name').textContent = player2;
+                    document.getElementById('currentGameStatus').textContent = 'Created';
+                    
+                    showStatus(`Game created! ID: ${currentGameId}`, 'success');
+                    debug(`Game created successfully: ${currentGameId}`);
+                } else {
+                    throw new Error(data.error || 'Failed to create game');
+                }
+            } catch (error) {
+                debug(`Error creating game: ${error.message}`);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function startGame() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                debug(`Starting game: ${currentGameId}`);
+                debug(`Making request to: ${API_BASE}/game/pong/start`);
+                
+                const response = await fetch(`${API_BASE}/game/pong/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId: currentGameId })
+                });
+                
+                const data = await response.json();
+                debug(`Start game response: ${JSON.stringify(data)}`);
+                
+                if (response.ok) {
+                    document.getElementById('currentGameStatus').textContent = 'Playing';
+                    showStatus('Game started!', 'success');
+                    debug(`Game started successfully`);
+                } else {
+                    throw new Error(data.error || 'Failed to start game');
+                }
+            } catch (error) {
+                debug(`Error starting game: ${error.message}`);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function listGames() {
+            try {
+                debug('Listing games...');
+                debug(`Making request to: ${API_BASE}/game/pong/list`);
+                
+                const response = await fetch(`${API_BASE}/game/pong/list`);
+                const data = await response.json();
+                debug(`List games response: ${JSON.stringify(data)}`);
+                
+                if (response.ok) {
+                    const gamesList = data.games || [];
+                    debug(`Found ${gamesList.length} games`);
+                    
+                    // Display games in status
+                    if (gamesList.length > 0) {
+                        let gamesText = `Found ${gamesList.length} games:\n`;
+                        gamesList.forEach(game => {
+                            gamesText += `- ${game.id}: ${game.player1.alias} vs ${game.player2.alias} (${game.state})\n`;
+                        });
+                        showStatus(gamesText, 'info');
+                    } else {
+                        showStatus('No games found', 'info');
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to list games');
+                }
+            } catch (error) {
+                debug(`Error listing games: ${error.message}`);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function getGameState() {
+            if (!currentGameId) {
+                showStatus('No game selected', 'error');
+                return;
+            }
+            
+            try {
+                debug(`Getting game state: ${currentGameId}`);
+                debug(`Making request to: ${API_BASE}/game/pong/state/${currentGameId}`);
+                
+                const response = await fetch(`${API_BASE}/game/pong/state/${currentGameId}`);
+                const data = await response.json();
+                debug(`Game state response: ${JSON.stringify(data)}`);
+                
+                if (response.ok) {
+                    gameState = data;
+                    updateGameDisplay();
+                    showStatus(`Game state retrieved for ${currentGameId}`, 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to get game state');
+                }
+            } catch (error) {
+                debug(`Error getting game state: ${error.message}`);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function connectWebSocket() {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                showStatus('WebSocket already connected', 'info');
+                return;
+            }
+            
+            try {
+                const wsUrl = `${WS_BASE}/game/pong/ws/${currentGameId}`;
+                debug(`Connecting to WebSocket: ${wsUrl}`);
+                
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    isConnected = true;
+                    debug('WebSocket connected successfully');
+                    document.getElementById('wsStatus').textContent = 'Connected';
+                    document.getElementById('wsStatus').className = 'websocket-status websocket-connected';
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    showStatus('WebSocket connected!', 'success');
+                };
+                
+                websocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        debug(`WebSocket message received: ${JSON.stringify(data)}`);
+                        
+                        if (data.type === 'game_state') {
+                            gameState = data;
+                            updateCount++;
+                            document.getElementById('updateCount').textContent = updateCount;
+                            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                            updateGameDisplay();
+                        }
+                    } catch (error) {
+                        debug(`Error parsing WebSocket message: ${error.message}`);
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    isConnected = false;
+                    debug(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+                    document.getElementById('wsStatus').textContent = 'Disconnected';
+                    document.getElementById('wsStatus').className = 'websocket-status websocket-disconnected';
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    showStatus('WebSocket disconnected', 'error');
+                };
+                
+                websocket.onerror = function(error) {
+                    debug(`WebSocket error: ${error}`);
+                    showStatus('WebSocket error', 'error');
+                };
+                
+            } catch (error) {
+                debug(`Error connecting WebSocket: ${error.message}`);
+                showStatus(`WebSocket error: ${error.message}`, 'error');
+            }
+        }
+        
+        function disconnectWebSocket() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+                debug('WebSocket disconnected manually');
+            }
+        }
+        
+        async function movePlayer(player, direction) {
+            if (!currentGameId) {
+                showStatus('No game created', 'error');
+                return;
+            }
+            
+            try {
+                debug(`Moving ${player} ${direction}`);
+                debug(`Making request to: ${API_BASE}/game/pong/move`);
+                
+                const response = await fetch(`${API_BASE}/game/pong/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gameId: currentGameId,
+                        player,
+                        direction
+                    })
+                });
+                
+                const data = await response.json();
+                debug(`Move response: ${JSON.stringify(data)}`);
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to move player');
+                }
+                
+                debug(`Player moved successfully: ${player} ${direction}`);
+            } catch (error) {
+                debug(`Error moving player: ${error.message}`);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateGameDisplay() {
+            if (!gameState) {
+                debug('No game state to display');
+                return;
+            }
+            
+            debug(`Updating display: Ball at (${gameState.ball.x}, ${gameState.ball.y}), Player1 paddle: ${gameState.player1.paddle}, Player2 paddle: ${gameState.player2.paddle}`);
+            
+            // Update scores and status
+            document.getElementById('player1Score').textContent = gameState.player1.score;
+            document.getElementById('player2Score').textContent = gameState.player2.score;
+            document.getElementById('currentGameStatus').textContent = gameState.state;
+            
+            // Update player names
+            document.getElementById('player1Name').textContent = gameState.player1.alias;
+            document.getElementById('player2Name').textContent = gameState.player2.alias;
+            
+            // Draw game
+            drawGame();
+        }
+        
+        function drawGame() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (!gameState) {
+                // Draw placeholder
+                ctx.fillStyle = '#555';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No game data', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            // Draw center line
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw paddles
+            ctx.fillStyle = '#fff';
+            const paddleWidth = 20;
+            const paddleHeight = 80;
+            
+            // Player 1 paddle (left)
+            const paddle1Y = (gameState.player1.paddle / 100) * (canvas.height - paddleHeight);
+            ctx.fillRect(20, paddle1Y, paddleWidth, paddleHeight);
+            
+            // Player 2 paddle (right)
+            const paddle2Y = (gameState.player2.paddle / 100) * (canvas.height - paddleHeight);
+            ctx.fillRect(canvas.width - 40, paddle2Y, paddleWidth, paddleHeight);
+            
+            // Draw ball
+            const ballX = (gameState.ball.x / 100) * canvas.width;
+            const ballY = (gameState.ball.y / 100) * canvas.height;
+            
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw scores
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(gameState.player1.score, canvas.width / 4, 60);
+            ctx.fillText(gameState.player2.score, (canvas.width * 3) / 4, 60);
+            
+            debug(`Canvas updated: Ball at (${ballX}, ${ballY}), Paddles at ${paddle1Y} and ${paddle2Y}`);
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', function(event) {
+            if (!currentGameId || !isConnected) return;
+            
+            switch(event.key) {
+                case 'w':
+                case 'W':
+                    movePlayer('player1', 'up');
+                    event.preventDefault();
+                    break;
+                case 's':
+                case 'S':
+                    movePlayer('player1', 'down');
+                    event.preventDefault();
+                    break;
+                case 'ArrowUp':
+                    movePlayer('player2', 'up');
+                    event.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    movePlayer('player2', 'down');
+                    event.preventDefault();
+                    break;
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            debug('Debug interface loaded');
+            drawGame(); // Draw empty game
+            checkServerHealth(); // Auto-check server health
+        });
+    </script>
+</body>
+</html>

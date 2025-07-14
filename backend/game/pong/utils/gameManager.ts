@@ -5,7 +5,6 @@ const games = new Map<string, GameState>();
 
 export function createGame(player1: string, player2: string): GameState{
 	const id = `game_${Date.now()}`;
-	
 	const p1 = new Player(player1);
 	const p2 = new Player(player2);
 	
@@ -27,6 +26,7 @@ export function startGame(gameId: string): boolean {
 	}
 	return false;
 }
+
 
 export function movePaddle(gameId: string, player: 'player1' | 'player2', direction: 'up' | 'down'): boolean {
 	const game = games.get(gameId);
@@ -53,8 +53,8 @@ export function updateStatus(game: GameState) {
 		// Check for win conditions
 		game.reachEnd();
 	}
-	if (game.state === 'player1_wins' || game.state === 'player2_wins') {
-		game.state = 'waiting'; // Reset to waiting state after a win
+	if (game.player1.score >= 5 || game.player2.score >= 5) {
+		game.state = game.player1.score >= 5 ? 'player1_wins' : 'player2_wins';
 	}
 }
 
@@ -65,3 +65,13 @@ export function getAllGames(): GameState[] {
 export function removeGame(gameId: string): boolean {
 	return games.delete(gameId);
 }
+
+// setInterval(() => {
+// 	const now = Date.now();
+// 	games.forEach((game, gameId) => {
+// 		if (game.state === 'player1_wins' || game.state === 'player2_wins') {
+// 			const gameAge = now - parseInt(gameId.split('_')[1]);
+// 			if (gameAge > 60000 * 5) // Remove games older than 60 seconds * 5
+// 			{
+// 				games
+// 			}
